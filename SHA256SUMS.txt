@@ -1,0 +1,1 @@
+aeec2e2b1eadd28997d89621ece1f10bdd3d38f14c3fe9194a60438ee8aa2d7a  ZnMg_MACE_1000000steps.model

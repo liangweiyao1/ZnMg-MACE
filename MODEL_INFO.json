@@ -1,0 +1,35 @@
+{
+  "model": "ZnMg_MACE_1000000steps.model",
+  "step": 1000000,
+  "unit": "optimizer_step",
+  "sha256": "aeec2e2b1eadd28997d89621ece1f10bdd3d38f14c3fe9194a60438ee8aa2d7a",
+  "bytes": 6242212,
+  "checkpoint": "raw weights, not EMA",
+  "foundation": "MACE-OMat-0 medium",
+  "labels": "original DFT",
+  "training_frames": 1701,
+  "validation_frames": 113,
+  "historical_test_frames": 145,
+  "inference_evaluation_dtype": "float64",
+  "test_metrics": {
+    "frames": 145,
+    "E_meV_atom": 1.0063059196730524,
+    "F_eV_A": 0.009208540389398615,
+    "S_GPa": 0.07126595304968181
+  },
+  "repository": "https://github.com/liangweiyao1/ZnMg-MACE",
+  "paper_title": "Mg segregation and plasticity mechanisms at Zn twin boundaries: Molecular dynamics simulations with a fine-tuned machine learning interatomic potential",
+  "release_date": "2026-10-30",
+  "intended_elements": [
+    "Zn",
+    "Mg"
+  ],
+  "license": "Academic Software License (ASL), inherited from MACE-OMAT-0",
+  "foundation_sha256": "d4b14be9afa294eebdbe31a0280b26a0fa29715771e978cbfd3ca24e0d90307a",
+  "units": {
+    "energy": "eV",
+    "length": "angstrom",
+    "forces": "eV/angstrom",
+    "ASE_stress": "eV/angstrom^3"
+  }
+}

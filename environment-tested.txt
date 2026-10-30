@@ -1,0 +1,8 @@
+# Release inference check: 2026-10-30, macOS arm64 CPU
+# Python 3.12.13; float64; no CuEquivariance acceleration
+# example_ase.py sets TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 for the verified checkpoint
+mace-torch==0.3.16
+torch==2.14.1
+ase==3.29.0
+e3nn==0.4.4
+numpy==2.5.4
