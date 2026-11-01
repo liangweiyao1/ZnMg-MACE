@@ -1,92 +1,92 @@
 # ZnMg-MACE
 
-Fine-tuned Zn–Mg machine learning interatomic potential accompanying:
+Model and DFT dataset for **Mg segregation and plasticity mechanisms at Zn twin boundaries: Molecular dynamics simulations with a fine-tuned machine learning interatomic potential**.
 
-> **Mg segregation and plasticity mechanisms at Zn twin boundaries: Molecular dynamics simulations with a fine-tuned machine learning interatomic potential**
+The Zn–Mg potential was fine-tuned from MACE-OMAT-0 medium using DFT energies, forces and stresses. `ZnMg_MACE.model` contains the raw weights after 1,000,000 optimizer updates, without EMA averaging. The native MACE model can be used through ASE; a separate export is needed for LAMMPS.
 
-This repository provides the **1,000,000-optimizer-step, non-EMA checkpoint**, fine-tuned from **MACE-OMAT-0 medium** using original DFT labels. It supports energy, force and stress calculations through the ASE `MACECalculator`. The model file is the unmodified native MACE/PyTorch checkpoint, not a LAMMPS-compiled model.
+## Files
 
-## Download and verify
+- `ZnMg_MACE.model`: fine-tuned potential.
+- `data/train.extxyz`, `data/validation.extxyz`, `data/test.extxyz`: the dataset splits used for this model.
+- `example_ase.py`: energy, force and stress calculation with ASE.
+- `requirements.txt`: Python dependencies.
+- `LICENSE-ASL.md`: upstream model license.
+
+## Installation and use
+
+Use Python 3.12 and install a PyTorch build suitable for your CPU or CUDA system.
 
 ```bash
 git clone https://github.com/liangweiyao1/ZnMg-MACE.git
 cd ZnMg-MACE
-shasum -a 256 -c SHA256SUMS.txt
-```
-
-Alternatively, download this repository through **Code → Download ZIP**. The weight file is 6,242,212 bytes (about 6.24 MB); no Git LFS client is needed.
-
-## Quick start
-
-Use Python 3.12 in a virtual environment. Install a PyTorch build appropriate for your CPU or CUDA system, then:
-
-```bash
 python -m pip install -r requirements.txt
 python example_ase.py --device cpu
+```
+
+The example uses a two-atom hcp Zn cell with a = 2.6466713 Å and c = 5.0547880 Å. To evaluate another structure:
+
+```bash
 python example_ase.py --device cuda --structure POSCAR --output prediction.json
 ```
 
-With no structure argument, the example builds a two-atom hcp Zn cell at the recorded model equilibrium lattice parameters. It verifies the model checksum before loading and evaluates energy, forces and stress in float64. This small example checks inference, not MD stability. `smoke_test.json` and `environment-tested.txt` record the release-time CPU check and its environment.
+Calculations use float64. Energy is reported in eV, forces in eV/Å, and ASE stress in eV/Å³ with Voigt order xx, yy, zz, yz, xz, xy. Energy follows the DFT TOTEN reference; it is not a cohesive energy relative to isolated atoms.
 
-The example enables legacy PyTorch loading for this checksum-verified native checkpoint. Use only trusted checkpoint files.
+The example checks the model hash before loading. Native MACE checkpoints require legacy PyTorch object loading, which the script enables for this file. Only load checkpoints from a trusted source.
 
-Minimal use in an existing compatible environment, after verifying the checksum:
+The CPU example was checked with Python 3.12.13, MACE 0.3.16, PyTorch 2.14.1, e3nn 0.4.4 and ASE 3.29.0. The hcp Zn energy was −1.10712235 eV/atom.
+
+## Fine-tuning dataset
+
+The dataset contains 1,959 configurations with original DFT labels, divided into 1,701 training, 113 validation and 145 test configurations. It includes bulk structures, compounds, solid solutions, defects, stacking faults, twin boundaries, surfaces, AIMD snapshots and loading/thermal configurations. The split files retain their original frame identifiers and training weights.
+
+| Field | Meaning | Unit |
+|---|---|---|
+| `REF_energy` | DFT total energy of the configuration | eV |
+| `REF_forces` | Cartesian force on each atom | eV/Å |
+| `REF_stress` | 3 × 3 stress tensor | eV/Å³ |
+| `frame_id` | Configuration identifier | — |
+| `config_type` | Configuration category | — |
+
+Read the files with ASE:
 
 ```python
-import os
-os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"  # trusted native checkpoint only
-from ase.build import bulk
-from mace.calculators import MACECalculator
+from ase.io import read
 
-atoms = bulk("Zn", "hcp", a=2.6466712946968562, c=5.0547879578082515)
-atoms.calc = MACECalculator(
-    model_paths="ZnMg_MACE_1000000steps.model",
-    device="cpu",  # use "cuda" for an NVIDIA GPU
-    default_dtype="float64",
-)
-print(atoms.get_potential_energy())  # eV, total energy
-print(atoms.get_forces())           # eV/angstrom
-print(atoms.get_stress())           # eV/angstrom^3; ASE Voigt order
+frames = read("data/train.extxyz", index=":")
+atoms = frames[0]
+energy = atoms.info["REF_energy"]
+forces = atoms.arrays["REF_forces"]
+stress = atoms.info["REF_stress"]
 ```
 
-## Model and reported accuracy
+For MACE training, use `energy_key=REF_energy`, `forces_key=REF_forces` and `stress_key=REF_stress`. The files preserve the existing split; they should not be randomly repartitioned when comparing with the results below. The historical test data influenced the exclusion rules during development, so the retained test set is a development benchmark rather than an untouched blind test.
 
-| Item | Value |
-|---|---|
-| Intended chemical system | Zn–Mg |
-| Starting model | MACE-OMAT-0 medium |
-| Checkpoint | 1,000,000 optimizer updates; raw weights, not EMA |
-| Training / validation / historical test frames | 1,701 / 113 / 145 |
-| Evaluation precision | float64 |
-| Energy / length / force units | eV / angstrom / eV per angstrom |
+## Accuracy and scope
 
-| Split | Energy RMSE (meV/atom) | Force RMSE (eV/angstrom) | Stress RMSE (GPa) |
-|---|---:|---:|---:|
-| Validation (113 frames) | 0.960157 | 0.008996 | 0.056817 |
-| Historical test (145 frames) | 1.006306 | 0.009209 | 0.071266 |
+| Split | Configurations | Energy RMSE (meV/atom) | Force RMSE (eV/Å) | Stress RMSE (GPa) |
+|---|---:|---:|---:|---:|
+| Validation | 113 | 0.960157 | 0.008996 | 0.056817 |
+| Test | 145 | 1.006306 | 0.009209 | 0.071266 |
 
-These are the recorded checkpoint evaluations, not new measurements from the quick-start example. The historical test set was used during development and is not a new blind test. Many property-reference structures participated in training; those comparisons are fitting diagnostics. See [MODEL_CARD.md](MODEL_CARD.md) and the [complete original numerical report](evaluation_report.zh.md).
+The intended application is Zn–Mg segregation and deformation at Zn twin boundaries. Many property-reference structures were included in training. Known deviations include the T2 stacking-fault energy (94.81 versus 86.78 mJ/m² in DFT), Mg segregation at the prismatic (10-10) surface (0.07059 eV error), and structural relaxation of the S-type interstitial. Some Mg-decorated twin and stacking-fault references were not fully force-converged. These comparisons concern the specified reference geometries; they do not establish accuracy for all defects or loading conditions.
 
-## Files
+The repository provides the model and fine-tuning data. Production MD trajectories and the complete training workflow are not included.
 
-| File | Purpose |
-|---|---|
-| `ZnMg_MACE_1000000steps.model` | Native fine-tuned weights |
-| `SHA256SUMS.txt`, `MODEL_INFO.json` | Checkpoint identity and machine-readable metadata |
-| `example_ase.py`, `requirements.txt` | Minimal ASE inference example and direct dependencies |
-| `smoke_test.json`, `environment-tested.txt` | Recorded release-time inference check |
-| `MODEL_CARD.md`, `evaluation_report.zh.md` | Scope, evaluation conventions and known limitations |
-| `CITATION.md` | Associated manuscript and upstream attribution |
-| `NOTICE.md`, `LICENSE-ASL.md` | Model provenance and upstream license |
+## File verification
 
-## Scope and data availability
+SHA256 checksums:
 
-This release distributes model weights and an inference example. It does not include the DFT training dataset, the complete training workflow, or all MD input decks and trajectories underlying the manuscript. It is therefore sufficient for model inference, but is not a complete reproduction archive for every paper result. LAMMPS use requires an export compatible with the selected LAMMPS/MACE interface and validation against native ASE inference.
+```text
+aeec2e2b1eadd28997d89621ece1f10bdd3d38f14c3fe9194a60438ee8aa2d7a  ZnMg_MACE.model
+a763bc6c5f8d48bfe24e9ef854b5837ce6fb262ffff128fee7be58eb41b0cf70  data/train.extxyz
+6b4e9b4ee22af9572755098dbeb1276de6db50c8c7ac6aeb8cb7f04e6710123b  data/validation.extxyz
+bbec471a1428fc8e061032895c9ca0f597fad11c00e4840906ed4b9121a7c755  data/test.extxyz
+```
 
 ## Citation and license
 
-Please acknowledge the associated manuscript above and the MACE/foundation-model sources listed in [CITATION.md](CITATION.md). Author list, journal and DOI will be added when confirmed; no publication identifier is assigned by this repository.
+Please cite the associated manuscript named above and the relevant [MACE](https://github.com/ACEsuit/mace) and [foundation-model](https://github.com/ACEsuit/mace-foundations) publications when using this potential.
 
-The fine-tuned weights retain the **Academic Software License (ASL)** of MACE-OMAT-0, for academic non-commercial use. Read [NOTICE.md](NOTICE.md) and [LICENSE-ASL.md](LICENSE-ASL.md). The MIT license of the MACE software should not be confused with the license of the OMAT model weights.
+The model is a fine-tuned derivative of [MACE-OMAT-0 medium](https://github.com/ACEsuit/mace-foundations/releases/tag/mace_omat_0) and retains its Academic Software License (ASL), for academic non-commercial use. The full upstream terms are included in [LICENSE-ASL.md](LICENSE-ASL.md). The MIT license of the MACE software does not replace the license of the OMAT weights. The ASL statement here applies to the model; no separate license is assigned to the original DFT dataset.
 
-Questions and reproducibility reports can be raised through the repository's Issues page. Include the checkpoint hash, software versions, input structure and exact command.
+The foundation weights were modified by Zn–Mg fine-tuning; this checkpoint was frozen on 25 October 2026. Renaming the file does not change its weights. The model architecture and inference source are available in the MACE repository linked above.

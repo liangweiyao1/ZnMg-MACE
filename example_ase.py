@@ -18,11 +18,10 @@ def main():
     parser.add_argument("--output", type=Path, help="Optional JSON result file")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent
-    info = json.loads((root / "MODEL_INFO.json").read_text())
-    model = root / info["model"]
+    model = root / "ZnMg_MACE.model"
     digest = hashlib.sha256(model.read_bytes()).hexdigest()
-    if digest != info["sha256"]:
-        raise RuntimeError("Model checksum does not match MODEL_INFO.json")
+    if digest != "aeec2e2b1eadd28997d89621ece1f10bdd3d38f14c3fe9194a60438ee8aa2d7a":
+        raise RuntimeError("Model checksum does not match the released checkpoint")
     # Native MACE checkpoints contain Python objects. Load only this verified file.
     # e3nn 0.4.4 also requires legacy loading on newer PyTorch releases.
     os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
